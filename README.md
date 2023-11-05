@@ -8,7 +8,7 @@ Original "ping" C Program from https://nsrc.org/wrc/materials/source.html
 
   December, 1983  
   Author -
- 	Mike Muuss
+ 	[Mike Muuss](https://en.wikipedia.org/wiki/Mike_Muuss)   
  	U. S. Army Ballistic Research Laboratory
  	
   DFM BRL 1992
@@ -69,4 +69,4 @@ Original "ping" C Program from https://nsrc.org/wrc/materials/source.html
 
  tcpdump -i enp0s3 icmp -n
 
- another interesting ping implementation in Python https://pypi.org/project/python-ping/ 
+ Another interesting ping implementation in Python. https://pypi.org/project/python-ping/ 
