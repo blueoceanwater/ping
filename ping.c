@@ -16,14 +16,24 @@
  * Status -
  *	Public Domain.  Distribution Unlimited.
  *
+ *  Nov, 2023
+ *  Minor tweak on header files and function declaration by T. Wu.
+ *  Compiled by gcc 8.5 on Oracle Linux 8.
+ * 
  * Bugs -
  *	More statistics could always be gathered.
  *	This program has to run SUID to ROOT to access the ICMP socket.
  */
 
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h> 
 #include <stdio.h>
 #include <errno.h>
 #include <sys/time.h>
+#include <unistd.h>
+#include <signal.h>
+#include <sys/select.h>
 
 #include <sys/param.h>
 #include <sys/types.h>
@@ -35,6 +45,8 @@
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 #include <netdb.h>
+#include <arpa/inet.h>
+
 
 #define	MAXWAIT		10	/* max time to wait for response, sec. */
 #define	MAXPACKET	4096	/* max packet size */
@@ -72,14 +84,17 @@ int timing = 0;
 int tmin = 999999999;
 int tmax = 0;
 int tsum = 0;			/* sum of all times, for doing average */
-int finish(), catcher();
+void finish(), catcher();
 char *inet_ntoa();
+void tvsub(struct timeval *out, struct timeval *in);
+void pinger();
+void pr_pack(char * buf, int cc, struct sockaddr_in *from );
+u_short in_cksum(u_short *addr, int len);
 
 /*
  * 			M A I N
  */
-main(argc, argv)
-char *argv[];
+int main(int argc, char *argv[])
 {
 	struct sockaddr_in from;
 	char **av = argv;
@@ -193,7 +208,9 @@ char *argv[];
 		int fromlen = sizeof (from);
 		int cc;
 		struct timeval timeout;
-		int fdmask = 1 << s;
+		fd_set fdmask; 
+		FD_ZERO(&fdmask);
+		FD_SET(s, &fdmask);
 
 		timeout.tv_sec = 0;
 		timeout.tv_usec = 10000;
@@ -203,17 +220,21 @@ char *argv[];
 			if( select(32, &fdmask, 0, 0, &timeout) == 0)
 				continue;
 		}
-		if ( (cc=recvfrom(s, packet, len, 0, &from, &fromlen)) < 0) {
+		if ( (cc=recvfrom(s, packet, len, 0, (struct sockaddr*) &from, &fromlen)) < 0) {
 			if( errno == EINTR )
 				continue;
 			perror("ping: recvfrom");
 			continue;
 		}
 		pr_pack( packet, cc, &from );
-		if (npackets && nreceived >= npackets)
+		if (npackets && nreceived >= npackets) {
 			finish();
+			break;
+		}
 	}
 	/*NOTREACHED*/
+
+	return 0;
 }
 
 /*
@@ -227,7 +248,7 @@ char *argv[];
  * 	exactly at 1-second intervals).  This does not affect the quality
  *	of the delay and loss statistics.
  */
-catcher()
+void catcher()
 {
 	int waittime;
 
@@ -244,6 +265,7 @@ catcher()
 		signal(SIGALRM, finish);
 		alarm(waittime);
 	}
+	return;
 }
 
 /*
@@ -255,7 +277,7 @@ catcher()
  * of the data portion are used to hold a UNIX "timeval" struct in VAX
  * byte-order, to compute the round-trip time.
  */
-pinger()
+void pinger()
 {
 	static u_char outpack[MAXPACKET];
 	register struct icmp *icp = (struct icmp *) outpack;
@@ -278,7 +300,7 @@ pinger()
 		*datap++ = i;
 
 	/* Compute ICMP checksum here */
-	icp->icmp_cksum = in_cksum( icp, cc );
+	icp->icmp_cksum = in_cksum((u_short *) icp, cc );
 
 	/* cc = sendto(s, msg, len, flags, to, tolen) */
 	i = sendto( s, outpack, cc, 0, &whereto, sizeof(struct sockaddr) );
@@ -293,6 +315,8 @@ pinger()
 		putchar('.');
 		fflush(stdout);
 	}
+
+	return;
 }
 
 /*
@@ -338,10 +362,7 @@ register int t;
  * which arrive ('tis only fair).  This permits multiple copies of this
  * program to be run without having intermingled output (or statistics!).
  */
-pr_pack( buf, cc, from )
-char *buf;
-int cc;
-struct sockaddr_in *from;
+void pr_pack(char * buf, int cc, struct sockaddr_in *from )
 {
 	struct ip *ip;
 	register struct icmp *icp;
@@ -359,14 +380,14 @@ struct sockaddr_in *from;
 	if (cc < hlen + ICMP_MINLEN) {
 		if (pingflags & VERBOSE)
 			printf("packet too short (%d bytes) from %s\n", cc,
-				inet_ntoa(ntohl(from->sin_addr))); /* DFM */
+				inet_ntoa(from->sin_addr)); /* DFM */
 		return;
 	}
 	cc -= hlen;
 	icp = (struct icmp *)(buf + hlen);
 	if( (!(pingflags & QUIET)) && icp->icmp_type != ICMP_ECHOREPLY )  {
 		printf("%d bytes from %s: icmp_type=%d (%s) icmp_code=%d\n",
-		  cc, inet_ntoa(ntohl(from->sin_addr)),
+		  cc, inet_ntoa(from->sin_addr),
 		  icp->icmp_type, pr_type(icp->icmp_type), icp->icmp_code);/*DFM*/
 		if (pingflags & VERBOSE) {
 			for( i=0; i<12; i++)
@@ -413,9 +434,7 @@ struct sockaddr_in *from;
  * Checksum routine for Internet Protocol family headers (C Version)
  *
  */
-in_cksum(addr, len)
-u_short *addr;
-int len;
+u_short in_cksum(u_short *addr, int len)
 {
 	register int nleft = len;
 	register u_short *w = addr;
@@ -457,7 +476,7 @@ int len;
  * 
  * Out is assumed to be >= in.
  */
-tvsub( out, in )
+void tvsub( out, in )
 register struct timeval *out, *in;
 {
 	if( (out->tv_usec -= in->tv_usec) < 0 )   {
@@ -476,7 +495,7 @@ register struct timeval *out, *in;
  * than one copy of the program is running on a terminal;  it prevents
  * the statistics output from becomming intermingled.
  */
-finish()
+void finish()
 {
 	putchar('\n');
 	fflush(stdout);
