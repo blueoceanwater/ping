@@ -16,12 +16,11 @@ Original "ping" C Program from https://nsrc.org/wrc/materials/source.html
   Changed argument to inet_ntoa() to be struct in_addr instead of u_long
   
   Nov, 2023  
-  Minor tweak on header files and function declaration by T. Wu.   
+  Minor tweak on header files and function declaration (the original code was made 40 years ago, not compatible with today's gcc ) by T. Wu.   
   Compiled by gcc 8.5 on Oracle Linux 8.
     
   Status -
  	Public Domain.  Distribution Unlimited.
-
  
   Bugs -
  	More statistics could always be gathered.
