@@ -3,22 +3,25 @@
 Original "ping" C Program from https://nsrc.org/wrc/materials/source.html 
 
 
- 			P I N G . C
- 
   Using the InterNet Control Message Protocol (ICMP) "ECHO" facility,
   measure round-trip-delays and packet loss across network paths.
- 
+
+  December, 1983  
   Author -
  	Mike Muuss
  	U. S. Army Ballistic Research Laboratory
- 	December, 1983
-  Modified at Uc Berkeley
- 
-  Changed argument to inet_ntoa() to be struct in_addr instead of u_long
+ 	
   DFM BRL 1992
- 
+  Modified at Uc Berkeley   
+  Changed argument to inet_ntoa() to be struct in_addr instead of u_long
+  
+  Nov, 2023  
+  Minor tweak on header files and function declaration by T. Wu.   
+  Compiled by gcc 8.5 on Oracle Linux 8.
+    
   Status -
  	Public Domain.  Distribution Unlimited.
+
  
   Bugs -
  	More statistics could always be gathered.
