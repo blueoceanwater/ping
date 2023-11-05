@@ -66,3 +66,7 @@ Original "ping" C Program from https://nsrc.org/wrc/materials/source.html
       -> http://www.iana.org/assignments/icmp-parameters/icmp-parameters.xml
 
     ===========================================================================
+
+ tcpdump -i enp0s3 icmp -n
+
+ another interesting ping implementation in Python https://pypi.org/project/python-ping/ 
